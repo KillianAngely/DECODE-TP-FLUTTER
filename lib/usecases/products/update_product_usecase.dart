@@ -17,7 +17,7 @@ class UpdateProductUsecase {
         'name': name,
         'description': description,
         'price': price,
-        if (image != null) 'image': image,
+        if (image != null) 'picture': image,
       },
     );
   }

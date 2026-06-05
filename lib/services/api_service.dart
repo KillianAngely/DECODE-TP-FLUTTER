@@ -85,7 +85,7 @@ class ApiService {
     }
 
     if (kDebugMode) {
-      //print(response.body);
+      print('${response.statusCode} : ${response.body}');
     }
 
     switch (response.statusCode) {

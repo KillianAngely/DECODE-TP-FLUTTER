@@ -80,7 +80,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     final name = _nameController.text.trim();
     final description = _descriptionController.text.trim();
-    final price = double.parse(_priceController.text.trim());
+    final price = double.parse(_priceController.text.trim().replaceAll(',', '.'));
 
     try {
       if (_isEditing) {
@@ -242,7 +242,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Le prix est obligatoire';
                     }
-                    final parsed = double.tryParse(value.trim());
+                    final parsed = double.tryParse(value.trim().replaceAll(',', '.'));
                     if (parsed == null || parsed <= 0) {
                       return 'Le prix doit être un nombre positif';
                     }

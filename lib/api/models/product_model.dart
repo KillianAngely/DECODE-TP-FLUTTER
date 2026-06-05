@@ -18,8 +18,8 @@ class ProductModel {
       id: json['id'],
       name: json['name'],
       description: json['description'],
-      price: (json['price'] as num).toDouble(),
-      image: json['image'],
+      price: double.parse(json['price'].toString()),
+      image: json['picture'],
     );
   }
 
@@ -28,7 +28,7 @@ class ProductModel {
       'name': name,
       'description': description,
       'price': price,
-      if (image != null) 'image': image,
+      if (image != null) 'picture': image,
     };
   }
 }
