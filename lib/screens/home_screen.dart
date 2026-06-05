@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:toastification/toastification.dart';
@@ -20,9 +22,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GetProductsUsecase _getProducts = GetProductsUsecase();
   final DeleteProductUsecase _deleteProduct = DeleteProductUsecase();
+  final TextEditingController _searchController = TextEditingController();
 
   List<ProductModel> _products = [];
   bool _isLoading = true;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -30,12 +34,26 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchProducts();
   }
 
-  Future<void> _fetchProducts() async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _fetchProducts(search: query.trim().isEmpty ? null : query.trim());
+    });
+  }
+
+  Future<void> _fetchProducts({String? search}) async {
     setState(() {
       _isLoading = true;
     });
     try {
-      final response = await _getProducts.execute();
+      final response = await _getProducts.execute(search: search);
       if (!mounted) {
         return;
       }
@@ -114,24 +132,59 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Ajouter un produit'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _products.isEmpty
-              ? const Center(child: Text('Aucun produit'))
-              : RefreshIndicator(
-                  onRefresh: _fetchProducts,
-                  child: ListView.builder(
-                    itemCount: _products.length,
-                    itemBuilder: (context, index) {
-                      final product = _products[index];
-                      return ProductCard(
-                        product: product,
-                        onTap: () => context.push(rtProductEdit, extra: product),
-                        onDelete: () => _confirmDelete(product),
-                      );
-                    },
-                  ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Rechercher un produit...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _fetchProducts();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _products.isEmpty
+                    ? const Center(child: Text('Aucun produit'))
+                    : RefreshIndicator(
+                        onRefresh: () => _fetchProducts(
+                          search: _searchController.text.trim().isEmpty
+                              ? null
+                              : _searchController.text.trim(),
+                        ),
+                        child: ListView.builder(
+                          itemCount: _products.length,
+                          itemBuilder: (context, index) {
+                            final product = _products[index];
+                            return ProductCard(
+                              product: product,
+                              onTap: () =>
+                                  context.push(rtProductEdit, extra: product),
+                              onDelete: () => _confirmDelete(product),
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }

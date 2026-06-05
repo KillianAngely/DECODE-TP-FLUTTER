@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:toastification/toastification.dart';
 
 import '../api/models/product_model.dart';
@@ -24,8 +27,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
+  final _picker = ImagePicker();
 
   bool _isSubmitting = false;
+  String? _imageBase64;
 
   bool get _isEditing => widget.product != null;
 
@@ -45,6 +50,23 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      imageQuality: 80,
+    );
+    if (file == null) {
+      return;
+    }
+    final bytes = await file.readAsBytes();
+    final extension = file.name.split('.').last.toLowerCase();
+    final mime = extension == 'png' ? 'image/png' : 'image/jpeg';
+    setState(() {
+      _imageBase64 = 'data:$mime;base64,${base64Encode(bytes)}';
+    });
   }
 
   Future<void> _onSubmit() async {
@@ -67,12 +89,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           name: name,
           description: description,
           price: price,
+          image: _imageBase64,
         );
       } else {
         await CreateProductUsecase().execute(
           name: name,
           description: description,
           price: price,
+          image: _imageBase64,
         );
       }
 
@@ -93,7 +117,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       setState(() {
         _isSubmitting = false;
       });
-      final message = e.fields.entries.map((e) => e.value).join('\n');
+      final message = e.fields.entries.map((entry) => entry.value).join('\n');
       ToastService.showToast(message);
     } on ApiException catch (e) {
       if (!mounted) {
@@ -103,11 +127,21 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _isSubmitting = false;
       });
       ToastService.showToast(e.message);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSubmitting = false;
+      });
+      ToastService.showToast('Erreur inattendue: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Modifier le produit' : 'Ajouter un produit'),
@@ -120,6 +154,44 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             child: Column(
               spacing: 16,
               children: [
+                // Sélecteur d'image
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    height: 160,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: _imageBase64 != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.memory(
+                              base64Decode(_imageBase64!.split(',').last),
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate_outlined,
+                                size: 40,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Ajouter une image (optionnel)',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
                 TextFormField(
                   key: const ValueKey('product_name_field'),
                   controller: _nameController,
