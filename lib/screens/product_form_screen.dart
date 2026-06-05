@@ -31,6 +31,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   bool _isSubmitting = false;
   String? _imageBase64;
+  String _imageExtension = 'jpg';
 
   bool get _isEditing => widget.product != null;
 
@@ -53,19 +54,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? file = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      imageQuality: 80,
-    );
+    final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
     if (file == null) {
       return;
     }
     final bytes = await file.readAsBytes();
-    final extension = file.name.split('.').last.toLowerCase();
-    final mime = extension == 'png' ? 'image/png' : 'image/jpeg';
+    final ext = file.name.split('.').last.toLowerCase();
     setState(() {
-      _imageBase64 = 'data:$mime;base64,${base64Encode(bytes)}';
+      _imageBase64 = base64Encode(bytes);
+      _imageExtension = (ext == 'png' || ext == 'jpg' || ext == 'jpeg') ? ext : 'jpg';
     });
   }
 
@@ -89,14 +86,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           name: name,
           description: description,
           price: price,
-          image: _imageBase64,
+          imageBase64: _imageBase64,
+          imageExtension: _imageExtension,
         );
       } else {
         await CreateProductUsecase().execute(
           name: name,
           description: description,
           price: price,
-          image: _imageBase64,
+          imageBase64: _imageBase64,
+          imageExtension: _imageExtension,
         );
       }
 
@@ -169,7 +168,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(15),
                             child: Image.memory(
-                              base64Decode(_imageBase64!.split(',').last),
+                              base64Decode(_imageBase64!),
                               fit: BoxFit.cover,
                             ),
                           )

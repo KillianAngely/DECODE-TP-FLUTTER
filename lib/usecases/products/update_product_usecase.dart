@@ -9,7 +9,8 @@ class UpdateProductUsecase {
     required String name,
     required String description,
     required double price,
-    String? image,
+    String? imageBase64,
+    String imageExtension = 'jpg',
   }) {
     return _repo.addOrUpdate(
       id: id,
@@ -17,7 +18,13 @@ class UpdateProductUsecase {
         'name': name,
         'description': description,
         'price': price,
-        if (image != null) 'picture': image,
+        if (imageBase64 != null)
+          'picture': {
+            'name': 'photo',
+            'base64': imageBase64,
+            'extension': imageExtension,
+            'status': 'CREATED',
+          },
       },
     );
   }
